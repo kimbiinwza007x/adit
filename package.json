@@ -11,7 +11,7 @@
     "dev": "npm run build -w @adit/shared && concurrently -n api,web -c blue,magenta \"npm run dev -w api\" \"npm run dev -w web\"",
     "dev:api": "npm run build -w @adit/shared && npm run dev -w api",
     "dev:web": "npm run build -w @adit/shared && npm run dev -w web",
-    "build": "npm run build -w @adit/shared && npm run build -w api && npm run build -w web",
+    "build": "npm run build -w api && npm run build -w web",
     "lint": "npm run lint -w api && npm run lint -w web",
     "test": "npm run test -w api"
   },

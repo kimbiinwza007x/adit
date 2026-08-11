@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "cd ../.. && npm run build -w @adit/shared",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
