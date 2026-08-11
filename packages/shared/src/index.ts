@@ -65,6 +65,7 @@ export interface RewriteResponse {
 /** รหัสข้อผิดพลาดที่ Frontend ใช้ตัดสินใจว่าจะแสดงข้อความอะไร */
 export type AditErrorCode =
   | 'VALIDATION_ERROR'
+  | 'NOT_FOUND'
   | 'EMPTY_TEXT'
   | 'TEXT_TOO_LONG'
   | 'RATE_LIMITED'
@@ -85,6 +86,7 @@ export interface AditErrorBody {
 /** ข้อความ error ภาษาไทยสำหรับแต่ละรหัส ใช้เป็น fallback ฝั่ง Frontend */
 export const ERROR_MESSAGES: Record<AditErrorCode, string> = {
   VALIDATION_ERROR: 'ข้อมูลที่ส่งไปไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง',
+  NOT_FOUND: 'ไม่พบเส้นทางที่เรียก กรุณาตรวจสอบ URL และ HTTP method',
   EMPTY_TEXT: 'กรุณากรอกข้อความก่อนให้ AI ช่วยปรับ',
   TEXT_TOO_LONG: `ข้อความยาวเกิน ${MAX_TEXT_LENGTH.toLocaleString()} ตัวอักษร กรุณาแบ่งเป็นส่วนย่อย`,
   RATE_LIMITED: 'มีการเรียกใช้งานถี่เกินไป กรุณารอสักครู่แล้วลองใหม่',

@@ -13,6 +13,7 @@ import { AditErrorBody, AditErrorCode, ERROR_MESSAGES } from '@adit/shared';
 const STATUS_SERVER_ERROR: number = HttpStatus.INTERNAL_SERVER_ERROR;
 const STATUS_TOO_MANY_REQUESTS: number = HttpStatus.TOO_MANY_REQUESTS;
 const STATUS_REQUEST_TIMEOUT: number = HttpStatus.REQUEST_TIMEOUT;
+const STATUS_NOT_FOUND: number = HttpStatus.NOT_FOUND;
 
 /**
  * แปลง exception ทุกชนิดให้เป็น AditErrorBody รูปแบบเดียว
@@ -66,6 +67,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   private codeFromStatus(status: number): AditErrorCode {
     if (status === STATUS_TOO_MANY_REQUESTS) return 'RATE_LIMITED';
     if (status === STATUS_REQUEST_TIMEOUT) return 'PROVIDER_TIMEOUT';
+    if (status === STATUS_NOT_FOUND) return 'NOT_FOUND';
     if (status < STATUS_SERVER_ERROR) return 'VALIDATION_ERROR';
     return 'INTERNAL_ERROR';
   }

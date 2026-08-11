@@ -134,7 +134,13 @@ Environment Variables
 | `WEB_ORIGIN` | URL ของ project ที่ 1 (ใช้ตรวจ CORS) |
 | `AI_TIMEOUT_MS` | `25000` |
 
+`WEB_ORIGIN` ใส่ได้หลายค่าโดยคั่นด้วย `,` และรองรับ wildcard หนึ่งชั้นโดเมน
+เช่น `https://adit-web-delta.vercel.app,https://*.vercel.app`
+เพื่อให้ preview deployment ที่ URL เปลี่ยนทุกครั้งเรียก API ได้โดยไม่ต้องแก้ env ใหม่ทุกรอบ
+
 ไม่ต้องใส่ `API_PORT` เพราะ serverless ไม่ได้ listen พอร์ต
+
+การเพิ่มหรือแก้ env var บน Vercel มีผลกับ deployment ใหม่เท่านั้น ต้องสั่ง Redeploy ทุกครั้ง
 
 ### ทำงานยังไง
 
