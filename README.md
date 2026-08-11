@@ -85,7 +85,20 @@ npm run dev
 
 ### `GET /api/health`
 
-บอกว่า API ขึ้นแล้วหรือยัง และตั้งค่า AI provider ครบหรือไม่
+บอกว่า API ขึ้นแล้วหรือยัง ตั้งค่า AI provider ครบหรือไม่ และ CORS อนุญาต origin ไหนบ้าง
+
+```json
+{
+  "status": "ok",
+  "provider": "gemini",
+  "configured": true,
+  "webOrigins": ["https://adit-web-delta.vercel.app"],
+  "timestamp": "2026-08-11T10:59:31.445Z"
+}
+```
+
+เวลาหน้าเว็บฟ้อง "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้" ให้เทียบ `webOrigins` กับโดเมนจริงของหน้าเว็บก่อน
+ถ้าไม่ตรงกันแปลว่าเป็นปัญหา CORS ไม่ใช่ปัญหาเครือข่าย
 
 ## เปลี่ยน AI Provider
 

@@ -16,12 +16,28 @@ function toErrorCode(errors: ValidationError[]): AditErrorCode {
   return 'VALIDATION_ERROR';
 }
 
-/** แยกค่า WEB_ORIGIN ที่คั่นด้วย , ออกเป็นรายการ */
+export const DEFAULT_WEB_ORIGIN = 'http://localhost:3000';
+
+/**
+ * แยกค่า WEB_ORIGIN ที่คั่นด้วย , ออกเป็นรายการ
+ *
+ * ทนต่อความผิดพลาดที่เจอบ่อยตอนตั้งค่าบน dashboard ของผู้ให้บริการ:
+ * ช่องว่างหัวท้าย, เครื่องหมายคำพูดที่ติดมาตอน paste และ / ปิดท้าย URL
+ * (origin ตามสเปกไม่มี / ปิดท้าย ถ้าปล่อยไว้จะไม่มีวันตรงกับที่เบราว์เซอร์ส่งมา)
+ */
 export function parseOrigins(value: string | undefined): string[] {
-  return (value ?? 'http://localhost:3000')
+  const entries = (value ?? '')
     .split(',')
-    .map((entry) => entry.trim())
+    .map((entry) =>
+      entry
+        .trim()
+        .replace(/^["']|["']$/g, '')
+        .trim()
+        .replace(/\/+$/, ''),
+    )
     .filter(Boolean);
+
+  return entries.length > 0 ? entries : [DEFAULT_WEB_ORIGIN];
 }
 
 /**

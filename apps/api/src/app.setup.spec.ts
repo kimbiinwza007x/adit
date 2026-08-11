@@ -5,8 +5,30 @@ describe('parseOrigins', () => {
     expect(parseOrigins(undefined)).toEqual(['http://localhost:3000']);
   });
 
+  it('ใช้ค่าเริ่มต้นเมื่อตั้งเป็นค่าว่างหรือมีแต่ช่องว่าง', () => {
+    expect(parseOrigins('')).toEqual(['http://localhost:3000']);
+    expect(parseOrigins('   ')).toEqual(['http://localhost:3000']);
+    expect(parseOrigins(',,')).toEqual(['http://localhost:3000']);
+  });
+
   it('แยกค่าที่คั่นด้วย , และตัดช่องว่างทิ้ง', () => {
     expect(parseOrigins('https://a.com , https://b.com,')).toEqual([
+      'https://a.com',
+      'https://b.com',
+    ]);
+  });
+
+  it('ตัดเครื่องหมายคำพูดที่ติดมาตอน paste ออก', () => {
+    expect(parseOrigins('"https://a.com"')).toEqual(['https://a.com']);
+    expect(parseOrigins("'https://a.com','https://b.com'")).toEqual([
+      'https://a.com',
+      'https://b.com',
+    ]);
+  });
+
+  it('ตัด / ปิดท้ายออก เพราะ origin ที่เบราว์เซอร์ส่งมาไม่มี /', () => {
+    expect(parseOrigins('https://a.com/')).toEqual(['https://a.com']);
+    expect(parseOrigins('"https://a.com/" , https://b.com//')).toEqual([
       'https://a.com',
       'https://b.com',
     ]);
