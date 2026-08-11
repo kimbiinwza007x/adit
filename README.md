@@ -100,6 +100,21 @@ npm run dev
 เวลาหน้าเว็บฟ้อง "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้" ให้เทียบ `webOrigins` กับโดเมนจริงของหน้าเว็บก่อน
 ถ้าไม่ตรงกันแปลว่าเป็นปัญหา CORS ไม่ใช่ปัญหาเครือข่าย
 
+## โควตาและการสลับโมเดล
+
+โควตา free tier ของ Gemini **แยกตามโมเดล** และน้อยกว่าที่คิดมาก
+ตอนพัฒนาเจอว่า `gemini-flash-latest` (ปัจจุบันชี้ไป `gemini-3.6-flash`) ให้เพียง **20 ครั้งต่อวัน**
+
+ระบบจึงไล่ใช้โมเดลตามลำดับ `GEMINI_MODEL` แล้วต่อด้วย `GEMINI_FALLBACK_MODELS`
+เมื่อตัวไหนตอบ 429 หรือใช้ไม่ได้ จะสลับไปตัวถัดไปให้อัตโนมัติ ผู้ใช้ไม่เห็น error
+โควตารวมต่อวันจึงเป็นผลรวมของทุกโมเดลในลำดับ
+
+จะสลับเฉพาะกรณีที่เป็นปัญหาของตัวโมเดล (`RATE_LIMITED`, `MODEL_UNAVAILABLE`)
+ถ้าเป็นปัญหาของข้อความเอง เช่นถูกระบบความปลอดภัยปฏิเสธ จะไม่ไล่ลองโมเดลอื่นให้เสียโควตาฟรี
+
+ถ้าต้องการปริมาณมากกว่านี้ ต้องเปิด billing ที่ Google AI Studio
+ดูลำดับที่ใช้อยู่จริงได้จากฟิลด์ `models` ใน `GET /api/health`
+
 ## เปลี่ยน AI Provider
 
 ทุกอย่างที่ผูกกับ Gemini อยู่ใน `apps/api/src/rewrite/ai/` เท่านั้น
@@ -144,6 +159,7 @@ Environment Variables
 | --- | --- |
 | `GEMINI_API_KEY` | key จาก Google AI Studio |
 | `GEMINI_MODEL` | `gemini-flash-latest` |
+| `GEMINI_FALLBACK_MODELS` | `gemini-3.1-flash-lite,gemini-2.5-flash-lite` |
 | `WEB_ORIGIN` | URL ของ project ที่ 1 (ใช้ตรวจ CORS) |
 | `AI_TIMEOUT_MS` | `25000` |
 

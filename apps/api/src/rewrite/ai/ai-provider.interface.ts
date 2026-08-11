@@ -25,6 +25,9 @@ export interface AiProvider {
   /** ตั้งค่า API key ครบหรือยัง ถ้าไม่ครบ service จะตอบ PROVIDER_UNCONFIGURED */
   isConfigured(): boolean;
 
+  /** ลำดับโมเดลที่จะถูกใช้ ถ้า provider นั้นรองรับการสลับโมเดล (ไว้ให้ health รายงาน) */
+  modelChain?(): string[];
+
   rewrite(input: AiRewriteInput): Promise<AiRewriteOutput>;
 }
 

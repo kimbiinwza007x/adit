@@ -34,10 +34,11 @@ export class RewriteService {
   }
 
   /** ใช้โดย health check เพื่อบอกว่าตั้งค่า AI ครบหรือยัง */
-  status(): { provider: string; configured: boolean } {
+  status(): { provider: string; configured: boolean; models?: string[] } {
     return {
       provider: this.provider.name,
       configured: this.provider.isConfigured(),
+      models: this.provider.modelChain?.(),
     };
   }
 }

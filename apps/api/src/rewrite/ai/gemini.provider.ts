@@ -2,7 +2,7 @@ import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI, Type } from '@google/genai';
 import type { GenerateContentResponse, Schema } from '@google/genai';
-import type { RewriteNote } from '@adit/shared';
+import type { AditErrorCode, RewriteNote } from '@adit/shared';
 import { AditException } from '../../common/adit.exception';
 import type {
   AiProvider,
@@ -13,6 +13,36 @@ import { buildSystemInstruction, buildUserPrompt } from './prompt';
 
 /** จำนวนรายการแก้ไขสูงสุดที่ยอมให้ส่งกลับไปหน้าเว็บ */
 const MAX_NOTES = 8;
+
+/** โมเดลเริ่มต้น เรียงจากคุณภาพดีที่สุดไปหาโควตาเหลือเยอะที่สุด */
+export const DEFAULT_MODELS = [
+  'gemini-flash-latest',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-flash-lite',
+];
+
+/** รหัสที่ถือว่าเป็นปัญหาของตัวโมเดล จึงคุ้มที่จะลองโมเดลถัดไป */
+const SWITCHABLE_CODES = new Set<AditErrorCode>([
+  'RATE_LIMITED',
+  'MODEL_UNAVAILABLE',
+]);
+
+/**
+ * รวมโมเดลหลักกับโมเดลสำรองเป็นลำดับเดียว ตัดตัวซ้ำและช่องว่างทิ้ง
+ * ถ้าไม่ได้ตั้งค่าอะไรเลยจะใช้ DEFAULT_MODELS
+ */
+export function parseModels(
+  primary: string | undefined,
+  fallbacks: string | undefined,
+): string[] {
+  const listed = [primary ?? '', fallbacks ?? '']
+    .flatMap((value) => value.split(','))
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  const unique = [...new Set(listed)];
+  return unique.length > 0 ? unique : [...DEFAULT_MODELS];
+}
 
 /** โครงสร้าง JSON ที่บังคับให้โมเดลตอบกลับ */
 const RESPONSE_SCHEMA: Schema = {
@@ -45,14 +75,17 @@ export class GeminiProvider implements AiProvider {
 
   private readonly logger = new Logger(GeminiProvider.name);
   private readonly apiKey: string;
-  private readonly model: string;
+  private readonly models: string[];
   private readonly timeoutMs: number;
   private readonly temperature: number;
   private client?: GoogleGenAI;
 
   constructor(config: ConfigService) {
     this.apiKey = config.get<string>('GEMINI_API_KEY', '').trim();
-    this.model = config.get<string>('GEMINI_MODEL', 'gemini-flash-latest');
+    this.models = parseModels(
+      config.get<string>('GEMINI_MODEL', ''),
+      config.get<string>('GEMINI_FALLBACK_MODELS', ''),
+    );
     this.timeoutMs = Number(config.get<string>('AI_TIMEOUT_MS', '30000'));
     this.temperature = Number(config.get<string>('AI_TEMPERATURE', '0.2'));
   }
@@ -61,13 +94,50 @@ export class GeminiProvider implements AiProvider {
     return this.apiKey.length > 0;
   }
 
+  /** โมเดลที่จะถูกใช้ตามลำดับ (ไว้ให้ health รายงาน) */
+  modelChain(): string[] {
+    return [...this.models];
+  }
+
+  /**
+   * ลองไล่ทีละโมเดลตามลำดับที่ตั้งไว้
+   *
+   * โควตา free tier ของ Gemini แยกตามโมเดล พอตัวแรกเต็ม (429)
+   * ก็ยังใช้ตัวถัดไปต่อได้ ผู้ใช้จึงไม่เจอ error กลางคัน
+   */
   async rewrite(input: AiRewriteInput): Promise<AiRewriteOutput> {
     const client = this.getClient();
+    let lastError: AditException | undefined;
 
-    let response: GenerateContentResponse;
-    try {
-      response = await client.models.generateContent({
-        model: this.model,
+    for (const model of this.models) {
+      try {
+        return await this.callModel(client, model, input);
+      } catch (error) {
+        const failure = this.toAditException(error);
+
+        // สลับโมเดลเฉพาะกรณีที่เป็นปัญหาของตัวโมเดลเอง ไม่ใช่ปัญหาของข้อความ
+        if (!SWITCHABLE_CODES.has(failure.code)) throw failure;
+
+        lastError = failure;
+        this.logger.warn(
+          `โมเดล ${model} ใช้ไม่ได้ (${failure.code}) — ลองโมเดลถัดไป`,
+        );
+      }
+    }
+
+    throw (
+      lastError ?? new AditException('PROVIDER_ERROR', HttpStatus.BAD_GATEWAY)
+    );
+  }
+
+  private async callModel(
+    client: GoogleGenAI,
+    model: string,
+    input: AiRewriteInput,
+  ): Promise<AiRewriteOutput> {
+    const response: GenerateContentResponse =
+      await client.models.generateContent({
+        model,
         contents: buildUserPrompt(input.text),
         config: {
           systemInstruction: buildSystemInstruction(input.tone),
@@ -77,9 +147,6 @@ export class GeminiProvider implements AiProvider {
           abortSignal: AbortSignal.timeout(this.timeoutMs),
         },
       });
-    } catch (error) {
-      throw this.toAditException(error);
-    }
 
     const blockReason = response.promptFeedback?.blockReason;
     if (blockReason) {
@@ -93,12 +160,12 @@ export class GeminiProvider implements AiProvider {
     const raw = response.text;
     if (!raw) {
       this.logger.error(
-        `Gemini ตอบกลับว่างเปล่า finishReason=${response.candidates?.[0]?.finishReason ?? 'unknown'}`,
+        `โมเดล ${model} ตอบกลับว่างเปล่า finishReason=${response.candidates?.[0]?.finishReason ?? 'unknown'}`,
       );
       throw new AditException('PROVIDER_ERROR', HttpStatus.BAD_GATEWAY);
     }
 
-    return { ...this.parse(raw), model: this.model };
+    return { ...this.parse(raw), model };
   }
 
   private getClient(): GoogleGenAI {
