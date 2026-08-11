@@ -7,6 +7,7 @@ import {
   ERROR_MESSAGES,
   MAX_TEXT_LENGTH,
   type RewriteNote,
+  type RewriteSource,
   type RewriteTone,
 } from "@adit/shared";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -18,6 +19,7 @@ import { SourcePanel } from "./source-panel";
 import { ToneSelector } from "./tone-selector";
 
 interface ResultMeta {
+  source: RewriteSource;
   model: string;
   durationMs: number;
 }
@@ -80,7 +82,11 @@ export function AditWorkspace() {
       setResult(response.result);
       setAiResult(response.result);
       setNotes(response.notes);
-      setMeta({ model: response.model, durationMs: response.durationMs });
+      setMeta({
+        source: response.source,
+        model: response.model,
+        durationMs: response.durationMs,
+      });
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
       setError(
@@ -178,6 +184,7 @@ export function AditWorkspace() {
           loading={loading}
           hasResult={hasResult}
           edited={edited}
+          source={meta?.source}
           model={meta?.model}
           durationMs={meta?.durationMs}
           copied={copied}

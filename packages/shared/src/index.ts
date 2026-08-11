@@ -48,13 +48,21 @@ export interface RewriteNote {
   reason: string;
 }
 
+/**
+ * ผลลัพธ์มาจากไหน
+ * - `ai` = โมเดลภาษาเป็นคนปรับให้
+ * - `rules` = AI ใช้ไม่ได้ ระบบจึงแก้ให้เท่าที่กฎพื้นฐานทำได้ ผู้ใช้ควรตรวจทานเพิ่ม
+ */
+export type RewriteSource = 'ai' | 'rules';
+
 export interface RewriteResponse {
   /** ข้อความต้นฉบับที่ส่งเข้ามา (Before) */
   original: string;
   /** ข้อความที่ปรับแล้ว (After) */
   result: string;
   tone: RewriteTone;
-  /** ชื่อโมเดลที่ใช้ เช่น "gemini-flash-latest" */
+  source: RewriteSource;
+  /** ชื่อโมเดลที่ใช้ เช่น "gemini-flash-latest" หรือ "rule-engine" เมื่อ source เป็น rules */
   model: string;
   /** สิ่งที่แก้ไข (อาจเป็น array ว่างถ้าโมเดลไม่ได้ระบุ) */
   notes: RewriteNote[];
