@@ -96,6 +96,54 @@ npm run dev
 
 Controller, สัญญา API และ Frontend ไม่ต้องแก้เลย
 
+## Deploy บน Vercel
+
+ใช้ 2 project จาก repo เดียวกัน
+
+### Project ที่ 1 — เว็บ
+
+| ตั้งค่า | ค่า |
+| --- | --- |
+| Root Directory | `apps/web` |
+| Framework Preset | Next.js (ตรวจเจอเอง) |
+| Build / Output | ปล่อย default |
+
+Environment Variables
+
+| Key | ค่า |
+| --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | URL ของ project ที่ 2 ต่อท้ายด้วย `/api` |
+
+ตัวแปรที่ขึ้นต้นด้วย `NEXT_PUBLIC_` ถูกฝังตอน build ถ้าแก้ค่าต้อง redeploy ใหม่
+
+### Project ที่ 2 — API
+
+| ตั้งค่า | ค่า |
+| --- | --- |
+| Root Directory | `apps/api` |
+| Framework Preset | Other |
+| Build Command | `npm run build` |
+| Output Directory | ปล่อยว่าง |
+
+Environment Variables
+
+| Key | ค่า |
+| --- | --- |
+| `GEMINI_API_KEY` | key จาก Google AI Studio |
+| `GEMINI_MODEL` | `gemini-flash-latest` |
+| `WEB_ORIGIN` | URL ของ project ที่ 1 (ใช้ตรวจ CORS) |
+| `AI_TIMEOUT_MS` | `25000` |
+
+ไม่ต้องใส่ `API_PORT` เพราะ serverless ไม่ได้ listen พอร์ต
+
+### ทำงานยังไง
+
+`nest build` คอมไพล์ลง `dist/` ตามปกติ แล้ว [`apps/api/api/[[...path]].js`](apps/api/api/[[...path]].js)
+ทำหน้าที่เป็นจุดเข้าของ Vercel โดยเรียก Express instance ของ Nest ที่ `dist/serverless.js` มาใช้ตรง ๆ
+
+การตั้งค่า Nest ทั้งหมด (prefix, CORS, validation, exception filter) อยู่ใน `src/app.setup.ts`
+ซึ่งใช้ร่วมกันทั้งตอนรันเป็นเซิร์ฟเวอร์ปกติและตอนรันบน Vercel จึงไม่มีทางหลุดจากกัน
+
 ## ข้อจำกัดของเวอร์ชันนี้
 
 ยังไม่มี authentication, database, ประวัติการใช้งาน, การอัปโหลดไฟล์ และ dashboard ตามที่ระบุไว้ใน Out of Scope
