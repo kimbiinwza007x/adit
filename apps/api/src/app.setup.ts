@@ -22,22 +22,33 @@ export const DEFAULT_WEB_ORIGIN = 'http://localhost:3000';
  * แยกค่า WEB_ORIGIN ที่คั่นด้วย , ออกเป็นรายการ
  *
  * ทนต่อความผิดพลาดที่เจอบ่อยตอนตั้งค่าบน dashboard ของผู้ให้บริการ:
- * ช่องว่างหัวท้าย, เครื่องหมายคำพูดที่ติดมาตอน paste และ / ปิดท้าย URL
+ * ช่องว่างหัวท้าย, เครื่องหมายคำพูดที่ติดมาตอน paste, / ปิดท้าย URL
  * (origin ตามสเปกไม่มี / ปิดท้าย ถ้าปล่อยไว้จะไม่มีวันตรงกับที่เบราว์เซอร์ส่งมา)
+ * และการวางโดเมนเปล่าโดยลืม https:// ซึ่งก็ไม่มีวันตรงเช่นกัน
  */
 export function parseOrigins(value: string | undefined): string[] {
   const entries = (value ?? '')
     .split(',')
-    .map((entry) =>
-      entry
-        .trim()
-        .replace(/^["']|["']$/g, '')
-        .trim()
-        .replace(/\/+$/, ''),
-    )
+    .map((entry) => normalizeOrigin(entry))
     .filter(Boolean);
 
   return entries.length > 0 ? entries : [DEFAULT_WEB_ORIGIN];
+}
+
+function normalizeOrigin(entry: string): string {
+  const cleaned = entry
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .trim()
+    .replace(/\/+$/, '');
+
+  if (!cleaned) return '';
+  // ไม่มี scheme = วางโดเมนเปล่ามา เติม https:// ให้ (localhost ใช้ http)
+  if (/^https?:\/\//.test(cleaned)) return cleaned;
+
+  return /^localhost(:\d+)?$/.test(cleaned)
+    ? `http://${cleaned}`
+    : `https://${cleaned}`;
 }
 
 /**

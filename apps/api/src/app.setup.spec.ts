@@ -26,6 +26,24 @@ describe('parseOrigins', () => {
     ]);
   });
 
+  it('เติม https:// ให้เมื่อวางมาแต่โดเมนเปล่า', () => {
+    expect(parseOrigins('adit-web-delta.vercel.app')).toEqual([
+      'https://adit-web-delta.vercel.app',
+    ]);
+    expect(parseOrigins('"adit-web-delta.vercel.app/"')).toEqual([
+      'https://adit-web-delta.vercel.app',
+    ]);
+    expect(parseOrigins('*.vercel.app')).toEqual(['https://*.vercel.app']);
+  });
+
+  it('ใช้ http:// ให้ localhost ที่วางมาแบบไม่มี scheme', () => {
+    expect(parseOrigins('localhost:3000')).toEqual(['http://localhost:3000']);
+  });
+
+  it('ไม่แตะค่าที่มี scheme มาอยู่แล้ว', () => {
+    expect(parseOrigins('http://example.com')).toEqual(['http://example.com']);
+  });
+
   it('ตัด / ปิดท้ายออก เพราะ origin ที่เบราว์เซอร์ส่งมาไม่มี /', () => {
     expect(parseOrigins('https://a.com/')).toEqual(['https://a.com']);
     expect(parseOrigins('"https://a.com/" , https://b.com//')).toEqual([
