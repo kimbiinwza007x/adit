@@ -1,0 +1,101 @@
+# Adit
+
+ระบบช่วยปรับข้อความภาษาไทยจากต้นฉบับ (Before) ให้สุภาพและเป็นทางการมากขึ้น (After)
+โดยผู้ใช้แก้ไขเองได้ตลอดเวลา และจะให้ AI ช่วยปรับหรือไม่ก็ได้
+
+รายละเอียดขอบเขตของระบบอยู่ใน [Adit.md](Adit.md)
+
+## โครงสร้าง
+
+```
+adit/
+├─ apps/web      Next.js 16 + TypeScript + Tailwind v4 + shadcn/ui + Lucide
+├─ apps/api      NestJS 11 + REST API + Gemini
+└─ packages/shared  type ของ request/response ที่ทั้งสองฝั่งใช้ร่วมกัน
+```
+
+`packages/shared` เป็นแหล่งความจริงเดียวของสัญญา API — แก้ที่นี่แล้วทั้งสองฝั่งเห็นตรงกัน
+
+## เริ่มใช้งาน
+
+ต้องมี Node.js 20.9 ขึ้นไป
+
+```bash
+npm install
+```
+
+ตั้งค่า environment (ทำครั้งเดียว)
+
+```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.local.example apps/web/.env.local
+```
+
+จากนั้นใส่ `GEMINI_API_KEY` ใน `apps/api/.env` — ขอ key ได้ที่ https://aistudio.google.com/apikey
+(ถ้ายังไม่ใส่ ระบบยังเปิดใช้งานได้ตามปกติ แต่ปุ่ม "ให้ AI ช่วยปรับ" จะแจ้งว่ายังไม่ได้ตั้งค่า API Key)
+
+รันทั้งระบบ
+
+```bash
+npm run dev
+```
+
+- หน้าเว็บ: http://localhost:3000
+- API: http://localhost:3001/api
+- ตรวจสถานะ: http://localhost:3001/api/health
+
+รันแยกฝั่งได้ด้วย `npm run dev:web` หรือ `npm run dev:api`
+
+## คำสั่งอื่น
+
+| คำสั่ง | ความหมาย |
+| --- | --- |
+| `npm run build` | build ทั้ง shared, api และ web |
+| `npm test` | รัน unit test ของ api |
+| `npm run lint` | ตรวจ lint ทั้งสองแอป |
+
+## API
+
+### `POST /api/rewrite`
+
+```json
+{ "text": "พรุ่งนี้ผมส่งไฟล์ให้นะครับ", "tone": "formal" }
+```
+
+`tone` เลือกได้ระหว่าง `polite` (สุภาพ), `formal` (ทางการ, ค่าเริ่มต้น), `official` (ราชการ)
+
+ตอบกลับ
+
+```json
+{
+  "original": "พรุ่งนี้ผมส่งไฟล์ให้นะครับ",
+  "result": "ข้าพเจ้าจะจัดส่งไฟล์ให้ในวันพรุ่งนี้",
+  "tone": "formal",
+  "model": "gemini-flash-latest",
+  "notes": [{ "before": "ผม", "after": "ข้าพเจ้า", "reason": "ภาษาพูด" }],
+  "durationMs": 1820
+}
+```
+
+เมื่อเกิดข้อผิดพลาด จะตอบกลับรูปแบบเดียวกันเสมอ พร้อม `code` ที่ Frontend ใช้ตัดสินใจได้
+
+```json
+{ "statusCode": 503, "code": "PROVIDER_UNCONFIGURED", "message": "ยังไม่ได้ตั้งค่า API Key ของ AI ..." }
+```
+
+### `GET /api/health`
+
+บอกว่า API ขึ้นแล้วหรือยัง และตั้งค่า AI provider ครบหรือไม่
+
+## เปลี่ยน AI Provider
+
+ทุกอย่างที่ผูกกับ Gemini อยู่ใน `apps/api/src/rewrite/ai/` เท่านั้น
+
+1. เขียน class ใหม่ที่ `implements AiProvider` (ดู `gemini.provider.ts` เป็นตัวอย่าง)
+2. แก้ `useClass` ใน `apps/api/src/rewrite/rewrite.module.ts` บรรทัดเดียว
+
+Controller, สัญญา API และ Frontend ไม่ต้องแก้เลย
+
+## ข้อจำกัดของเวอร์ชันนี้
+
+ยังไม่มี authentication, database, ประวัติการใช้งาน, การอัปโหลดไฟล์ และ dashboard ตามที่ระบุไว้ใน Out of Scope
