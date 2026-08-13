@@ -9,9 +9,9 @@ import { RewriteService } from './rewrite.service';
 const fakeProvider: AiProvider = {
   name: 'fake',
   isConfigured: () => true,
-  rewrite: ({ text, tone }) =>
+  rewrite: ({ text }) =>
     Promise.resolve({
-      result: `[${tone}] ${text}`,
+      result: `[ปรับแล้ว] ${text}`,
       notes: [{ before: 'ผม', after: 'ข้าพเจ้า', reason: 'ภาษาพูด' }],
       model: 'fake-model',
     }),
@@ -32,36 +32,16 @@ describe('RewriteService', () => {
   });
 
   it('คืนข้อความต้นฉบับและผลลัพธ์คู่กัน', async () => {
-    const dto: RewriteRequestDto = {
-      text: 'ผมจะส่งงานพรุ่งนี้',
-      tone: 'formal',
-    };
+    const dto: RewriteRequestDto = { text: 'ผมจะส่งงานพรุ่งนี้' };
 
     const response = await service.rewrite(dto);
 
     expect(response.original).toBe('ผมจะส่งงานพรุ่งนี้');
-    expect(response.result).toBe('[formal] ผมจะส่งงานพรุ่งนี้');
-    expect(response.tone).toBe('formal');
+    expect(response.result).toBe('[ปรับแล้ว] ผมจะส่งงานพรุ่งนี้');
+    expect(response.source).toBe('ai');
     expect(response.model).toBe('fake-model');
     expect(response.notes).toHaveLength(1);
     expect(response.durationMs).toBeGreaterThanOrEqual(0);
-  });
-
-  it('ใช้ tone เริ่มต้นเมื่อไม่ได้ระบุมา', async () => {
-    const dto = { text: 'ทดสอบ' } as RewriteRequestDto;
-
-    const response = await service.rewrite(dto);
-
-    expect(response.tone).toBe('formal');
-  });
-
-  it('บอกว่าผลลัพธ์มาจาก AI', async () => {
-    const response = await service.rewrite({
-      text: 'ทดสอบ',
-      tone: 'formal',
-    });
-
-    expect(response.source).toBe('ai');
   });
 
   it('รายงานสถานะของ provider ให้ health check', () => {
@@ -94,10 +74,7 @@ describe('RewriteService — ตาข่ายรับเมื่อ AI ใ�
   it('ใช้กฎพื้นฐานแทนเมื่อโควตาหมด', async () => {
     const service = await buildWith(new AditException('RATE_LIMITED', 429));
 
-    const response = await service.rewrite({
-      text: 'ว่างมั้ยคับ 5555',
-      tone: 'formal',
-    });
+    const response = await service.rewrite({ text: 'ว่างมั้ยคับ 5555' });
 
     expect(response.source).toBe('rules');
     expect(response.model).toBe('rule-engine');
@@ -110,10 +87,7 @@ describe('RewriteService — ตาข่ายรับเมื่อ AI ใ�
       new AditException('PROVIDER_UNCONFIGURED', 503),
     );
 
-    const response = await service.rewrite({
-      text: 'ทำยังไงดีจ้า',
-      tone: 'formal',
-    });
+    const response = await service.rewrite({ text: 'ทำยังไงดีจ้า' });
 
     expect(response.source).toBe('rules');
     expect(response.result).toBe('ทำอย่างไรดี');
@@ -122,22 +96,16 @@ describe('RewriteService — ตาข่ายรับเมื่อ AI ใ�
   it('ไม่กลบ error เมื่อข้อความถูกระบบความปลอดภัยปฏิเสธ', async () => {
     const service = await buildWith(new AditException('BLOCKED_CONTENT', 422));
 
-    await expect(
-      service.rewrite({
-        text: 'ว่างมั้ย',
-        tone: 'formal',
-      }),
-    ).rejects.toMatchObject({ response: { code: 'BLOCKED_CONTENT' } });
+    await expect(service.rewrite({ text: 'ว่างมั้ย' })).rejects.toMatchObject({
+      response: { code: 'BLOCKED_CONTENT' },
+    });
   });
 
   it('โยน error เดิมกลับไปเมื่อกฎแก้อะไรไม่ได้เลย', async () => {
     const service = await buildWith(new AditException('RATE_LIMITED', 429));
 
     await expect(
-      service.rewrite({
-        text: 'เรียนแจ้งเพื่อทราบ',
-        tone: 'formal',
-      }),
+      service.rewrite({ text: 'เรียนแจ้งเพื่อทราบ' }),
     ).rejects.toMatchObject({ response: { code: 'RATE_LIMITED' } });
   });
 });

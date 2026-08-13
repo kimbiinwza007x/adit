@@ -27,6 +27,8 @@ interface ResultPanelProps {
   edited: boolean;
   /** ผลลัพธ์มาจาก AI หรือจากกฎพื้นฐาน */
   source?: RewriteSource;
+  /** true = ผู้ใช้กดขอ AI แล้วแต่ AI ใช้ไม่ได้ ระบบจึงถอยมาใช้กฎแทน */
+  fallback?: boolean;
   model?: string;
   durationMs?: number;
   copied: boolean;
@@ -35,7 +37,14 @@ interface ResultPanelProps {
   onUseAsSource: () => void;
 }
 
-/** ฝั่ง After — ผลลัพธ์จาก AI ที่ยังแก้ไขต่อเองได้ */
+/** กฎทำงานเสร็จในเสี้ยววินาที บอกเป็น "0.0 วินาที" แล้วดูเหมือนระบบไม่ได้ทำอะไร */
+function formatDuration(durationMs: number): string {
+  return durationMs < 1000
+    ? `${Math.max(1, Math.round(durationMs))} มิลลิวินาที`
+    : `${(durationMs / 1000).toFixed(1)} วินาที`;
+}
+
+/** ฝั่ง After — ผลลัพธ์ที่ยังแก้ไขต่อเองได้ */
 export function ResultPanel({
   value,
   onChange,
@@ -43,6 +52,7 @@ export function ResultPanel({
   hasResult,
   edited,
   source,
+  fallback,
   model,
   durationMs,
   copied,
@@ -60,8 +70,22 @@ export function ResultPanel({
               แก้ไขเอง
             </Badge>
           )}
+          {!edited && source === "rules" && !fallback && (
+            <Badge variant="secondary" className="font-normal">
+              กฎพื้นฐาน
+            </Badge>
+          )}
+          {!edited && source === "ai" && (
+            <Badge variant="secondary" className="font-normal">
+              AI
+            </Badge>
+          )}
         </CardTitle>
-        <CardDescription>ตรวจทานและแก้ไขเพิ่มเติมได้ก่อนนำไปใช้</CardDescription>
+        <CardDescription>
+          {source === "rules" && !fallback
+            ? "แก้คำผิดและภาษาพูดให้แล้ว กด “ให้ AI ช่วยปรับ” เพื่อเรียบเรียงประโยคใหม่"
+            : "ตรวจทานและแก้ไขเพิ่มเติมได้ก่อนนำไปใช้"}
+        </CardDescription>
         <CardAction>
           <div className="flex items-center gap-1">
             <Button
@@ -88,14 +112,13 @@ export function ResultPanel({
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col gap-2">
-        {source === "rules" && !loading && (
-          <Alert>
+        {fallback && !loading && (
+          <Alert variant="destructive">
             <TriangleAlert aria-hidden />
-            <AlertTitle>ยังไม่ได้ใช้ AI กับข้อความนี้</AlertTitle>
+            <AlertTitle>AI ใช้งานไม่ได้ตอนนี้</AlertTitle>
             <AlertDescription>
-              ตอนนี้ AI ใช้งานไม่ได้ ระบบจึงแก้ให้เท่าที่กฎพื้นฐานทำได้
-              เช่นคำผิดที่พบบ่อยและคำลงท้ายภาษาพูด สำนวนและโครงสร้างประโยคยังไม่ถูกเรียบเรียงใหม่
-              กรุณาตรวจทานและแก้เพิ่มเติมก่อนนำไปใช้
+              ระบบแก้ให้เท่าที่กฎพื้นฐานทำได้ โครงสร้างประโยคยังไม่ถูกเรียบเรียงใหม่
+              ลองกดอีกครั้งภายหลัง หรือแก้เพิ่มเติมเองได้เลย
             </AlertDescription>
           </Alert>
         )}
@@ -133,7 +156,7 @@ export function ResultPanel({
         <CardFooter className="flex-wrap justify-between gap-2 text-xs text-muted-foreground">
           <span className="tabular-nums">
             {source === "rules" ? "กฎพื้นฐาน · " : model ? `${model} · ` : ""}
-            {durationMs !== undefined ? `${(durationMs / 1000).toFixed(1)} วินาที` : ""}
+            {durationMs !== undefined ? formatDuration(durationMs) : ""}
           </span>
           <Button variant="ghost" size="sm" onClick={onUseAsSource}>
             <ArrowLeft aria-hidden />

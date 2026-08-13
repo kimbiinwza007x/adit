@@ -25,6 +25,7 @@ export const DEFAULT_MODELS = [
 const SWITCHABLE_CODES = new Set<AditErrorCode>([
   'RATE_LIMITED',
   'MODEL_UNAVAILABLE',
+  'MODEL_OVERLOADED',
 ]);
 
 /**
@@ -140,7 +141,7 @@ export class GeminiProvider implements AiProvider {
         model,
         contents: buildUserPrompt(input.text),
         config: {
-          systemInstruction: buildSystemInstruction(input.tone),
+          systemInstruction: buildSystemInstruction(),
           responseMimeType: 'application/json',
           responseSchema: RESPONSE_SCHEMA,
           temperature: this.temperature,
@@ -251,6 +252,13 @@ export class GeminiProvider implements AiProvider {
     if (status === HttpStatus.NOT_FOUND) {
       return new AditException(
         'MODEL_UNAVAILABLE',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+    // 503 = โมเดลตัวนั้นคนใช้หนาแน่นชั่วคราว ไม่ใช่ตั้งค่าผิด ลองตัวถัดไปได้เลย
+    if (status === HttpStatus.SERVICE_UNAVAILABLE) {
+      return new AditException(
+        'MODEL_OVERLOADED',
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }

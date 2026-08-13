@@ -5,28 +5,11 @@
  * การเปลี่ยน AI Provider ต้องไม่ทำให้ type ในไฟล์นี้เปลี่ยน
  */
 
-/** ระดับความเป็นทางการที่ผู้ใช้เลือกได้ */
-export const REWRITE_TONES = ['polite', 'formal', 'official'] as const;
-
-export type RewriteTone = (typeof REWRITE_TONES)[number];
-
-export const DEFAULT_TONE: RewriteTone = 'formal';
-
-/** ป้ายกำกับภาษาไทยของแต่ละ tone (ใช้แสดงบน UI) */
-export const TONE_LABELS: Record<RewriteTone, { label: string; hint: string }> = {
-  polite: {
-    label: 'สุภาพ',
-    hint: 'ยังคงความเป็นกันเอง แต่เรียบร้อยขึ้น เหมาะกับแชทงานหรืออีเมลภายใน',
-  },
-  formal: {
-    label: 'ทางการ',
-    hint: 'ภาษาเขียนที่เป็นทางการ เหมาะกับอีเมลลูกค้าหรือเอกสารทั่วไป',
-  },
-  official: {
-    label: 'ราชการ',
-    hint: 'สำนวนหนังสือราชการ เป็นทางการสูงสุด',
-  },
-};
+// ชั้นกฎอยู่ที่นี่เพราะทั้งเบราว์เซอร์และเซิร์ฟเวอร์ต้องใช้ตัวเดียวกัน
+export { applyRules } from './rules/rule-engine';
+export type { RuleResult } from './rules/rule-engine';
+export { THAI_RULES } from './rules/thai-rules';
+export type { TextRule } from './rules/thai-rules';
 
 /** ความยาวข้อความสูงสุดที่รับได้ต่อหนึ่ง request */
 export const MAX_TEXT_LENGTH = 5000;
@@ -34,8 +17,6 @@ export const MAX_TEXT_LENGTH = 5000;
 export interface RewriteRequest {
   /** ข้อความต้นฉบับ (Before) */
   text: string;
-  /** ระดับความเป็นทางการ (ไม่ส่งมา = 'formal') */
-  tone?: RewriteTone;
 }
 
 /** รายการสิ่งที่ AI แก้ไข ใช้อธิบายให้ผู้ใช้เห็นว่าเปลี่ยนอะไรไปบ้าง */
@@ -60,7 +41,6 @@ export interface RewriteResponse {
   original: string;
   /** ข้อความที่ปรับแล้ว (After) */
   result: string;
-  tone: RewriteTone;
   source: RewriteSource;
   /** ชื่อโมเดลที่ใช้ เช่น "gemini-flash-latest" หรือ "rule-engine" เมื่อ source เป็น rules */
   model: string;
@@ -81,6 +61,7 @@ export type AditErrorCode =
   | 'PROVIDER_TIMEOUT'
   | 'PROVIDER_UNCONFIGURED'
   | 'MODEL_UNAVAILABLE'
+  | 'MODEL_OVERLOADED'
   | 'BLOCKED_CONTENT'
   | 'INTERNAL_ERROR';
 
@@ -103,6 +84,8 @@ export const ERROR_MESSAGES: Record<AditErrorCode, string> = {
   PROVIDER_UNCONFIGURED: 'ยังไม่ได้ตั้งค่า API Key ของ AI กรุณาติดต่อผู้ดูแลระบบ',
   MODEL_UNAVAILABLE:
     'โมเดล AI ที่ตั้งค่าไว้ใช้งานไม่ได้ กรุณาแจ้งผู้ดูแลระบบให้ตรวจสอบค่า GEMINI_MODEL',
+  MODEL_OVERLOADED:
+    'ขณะนี้มีผู้ใช้งาน AI หนาแน่น กรุณาลองใหม่อีกครั้งในอีกสักครู่',
   BLOCKED_CONTENT: 'ข้อความนี้ถูกระบบความปลอดภัยของ AI ปฏิเสธ กรุณาแก้ไขข้อความแล้วลองใหม่',
   INTERNAL_ERROR: 'เกิดข้อผิดพลาดภายในระบบ กรุณาลองใหม่อีกครั้ง',
 };

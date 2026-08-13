@@ -1,7 +1,7 @@
 import { Transform } from 'class-transformer';
-import { IsIn, IsNotEmpty, IsString, MaxLength } from 'class-validator';
-import { MAX_TEXT_LENGTH, REWRITE_TONES } from '@adit/shared';
-import type { RewriteRequest, RewriteTone } from '@adit/shared';
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { MAX_TEXT_LENGTH } from '@adit/shared';
+import type { RewriteRequest } from '@adit/shared';
 
 export class RewriteRequestDto implements RewriteRequest {
   @IsString({ message: 'text ต้องเป็นข้อความ' })
@@ -13,7 +13,4 @@ export class RewriteRequestDto implements RewriteRequest {
     message: `ข้อความยาวเกิน ${MAX_TEXT_LENGTH} ตัวอักษร`,
   })
   text!: string;
-
-  @IsIn(REWRITE_TONES, { message: 'tone ไม่ถูกต้อง' })
-  tone: RewriteTone = 'formal';
 }

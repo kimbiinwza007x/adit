@@ -1,4 +1,6 @@
-import { applyRules } from './rule-engine';
+// ตัวกฎย้ายไปอยู่ที่ @adit/shared เพราะเบราว์เซอร์ต้องใช้ด้วย
+// แต่เทสต์ยังอยู่ที่นี่เพื่อใช้ jest ชุดเดียวกับที่มีอยู่แล้ว ไม่ต้องตั้ง runner เพิ่มอีกตัว
+import { applyRules } from '@adit/shared';
 
 describe('applyRules — คำแสดงอารมณ์และสัญลักษณ์', () => {
   it('ตัดเสียงหัวเราะออก', () => {

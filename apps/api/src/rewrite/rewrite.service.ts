@@ -1,11 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { DEFAULT_TONE } from '@adit/shared';
+import { applyRules } from '@adit/shared';
 import type { AditErrorCode, RewriteResponse } from '@adit/shared';
 import { AditException } from '../common/adit.exception';
 import { AI_PROVIDER } from './ai/ai-provider.interface';
 import type { AiProvider } from './ai/ai-provider.interface';
 import { RewriteRequestDto } from './dto/rewrite-request.dto';
-import { applyRules } from './rules/rule-engine';
 
 /** ชื่อที่ใช้แทน "โมเดล" เมื่อผลลัพธ์มาจากกฎ */
 const RULE_ENGINE_NAME = 'rule-engine';
@@ -22,6 +21,7 @@ const FALLBACK_CODES = new Set<AditErrorCode>([
   'PROVIDER_TIMEOUT',
   'PROVIDER_UNCONFIGURED',
   'MODEL_UNAVAILABLE',
+  'MODEL_OVERLOADED',
   'RATE_LIMITED',
 ]);
 
@@ -33,28 +33,26 @@ export class RewriteService {
 
   async rewrite(dto: RewriteRequestDto): Promise<RewriteResponse> {
     const text = dto.text;
-    const tone = dto.tone ?? DEFAULT_TONE;
     const startedAt = Date.now();
 
     try {
-      const output = await this.provider.rewrite({ text, tone });
+      const output = await this.provider.rewrite({ text });
       const durationMs = Date.now() - startedAt;
 
       this.logger.log(
-        `rewrite สำเร็จ provider=${this.provider.name} model=${output.model} tone=${tone} chars=${text.length} ms=${durationMs}`,
+        `rewrite สำเร็จ provider=${this.provider.name} model=${output.model} chars=${text.length} ms=${durationMs}`,
       );
 
       return {
         original: text,
         result: output.result,
-        tone,
         source: 'ai',
         model: output.model,
         notes: output.notes,
         durationMs,
       };
     } catch (error) {
-      return this.fallbackToRules(error, text, tone, startedAt);
+      return this.fallbackToRules(error, text, startedAt);
     }
   }
 
@@ -76,7 +74,6 @@ export class RewriteService {
   private fallbackToRules(
     error: unknown,
     text: string,
-    tone: RewriteResponse['tone'],
     startedAt: number,
   ): RewriteResponse {
     const failure =
@@ -102,7 +99,6 @@ export class RewriteService {
     return {
       original: text,
       result: ruled.result,
-      tone,
       source: 'rules',
       model: RULE_ENGINE_NAME,
       notes: ruled.notes,

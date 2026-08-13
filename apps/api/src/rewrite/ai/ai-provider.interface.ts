@@ -1,8 +1,7 @@
-import type { RewriteNote, RewriteTone } from '@adit/shared';
+import type { RewriteNote } from '@adit/shared';
 
 export interface AiRewriteInput {
   text: string;
-  tone: RewriteTone;
 }
 
 export interface AiRewriteOutput {
