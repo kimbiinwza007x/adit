@@ -74,12 +74,12 @@ describe('RewriteService — ตาข่ายรับเมื่อ AI ใ�
   it('ใช้กฎพื้นฐานแทนเมื่อโควตาหมด', async () => {
     const service = await buildWith(new AditException('RATE_LIMITED', 429));
 
-    const response = await service.rewrite({ text: 'ว่างมั้ยคับ 5555' });
+    const response = await service.rewrite({ text: 'ว่างมั้ยคับ5555' });
 
     expect(response.source).toBe('rules');
     expect(response.model).toBe('rule-engine');
     expect(response.result).toBe('ว่างไหมครับ');
-    expect(response.original).toBe('ว่างมั้ยคับ 5555');
+    expect(response.original).toBe('ว่างมั้ยคับ5555');
   });
 
   it('ใช้กฎพื้นฐานแทนเมื่อยังไม่ได้ตั้งค่า API key', async () => {

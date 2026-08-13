@@ -3,8 +3,15 @@
 import { applyRules } from '@adit/shared';
 
 describe('applyRules — คำแสดงอารมณ์และสัญลักษณ์', () => {
-  it('ตัดเสียงหัวเราะออก', () => {
-    expect(applyRules('ส่งงานแล้วนะ 5555').result).toBe('ส่งงานแล้วนะ');
+  it('ตัดเสียงหัวเราะที่ติดกับข้อความไทย', () => {
+    expect(applyRules('ส่งงานแล้วนะ5555').result).toBe('ส่งงานแล้วนะ');
+  });
+
+  it('จงใจไม่ตัดเสียงหัวเราะที่มีช่องว่างล้อมรอบ', () => {
+    // "ส่งงานแล้วนะ 5555" กับ "ราคา 5555 บาท" มีรูปเหมือนกันทุกอย่าง
+    // แยกไม่ออกว่าอันไหนหัวเราะอันไหนจำนวนเงิน จึงเลือกไม่แตะทั้งคู่
+    // เคสนี้ปล่อยให้ AI จัดการแทน ซึ่ง prompt สั่งให้ตัดคำแสดงอารมณ์อยู่แล้ว
+    expect(applyRules('ส่งงานแล้วนะ 5555').result).toBe('ส่งงานแล้วนะ 5555');
   });
 
   it('ตัดอีโมจิออก', () => {
@@ -42,7 +49,7 @@ describe('applyRules — คำสะกดผิด', () => {
 
   it('แก้ คับ ได้แม้คำข้างหน้าเพิ่งถูกกฎอื่นแปลงมาก่อน', () => {
     // "มั้ย" ต้องกลายเป็น "ไหม" ก่อน กฎ คับ ถึงจะเห็นบริบทว่าจบประโยคแล้ว
-    expect(applyRules('ว่างมั้ยคับ 5555 ทำยังไงดีจ้า').result).toBe(
+    expect(applyRules('ว่างมั้ยคับ5555 ทำยังไงดีจ้า').result).toBe(
       'ว่างไหมครับ ทำอย่างไรดี',
     );
   });
@@ -53,6 +60,55 @@ describe('applyRules — คำสะกดผิด', () => {
 
   it('แก้ มหาลัย เป็น มหาวิทยาลัย', () => {
     expect(applyRules('ไปมหาลัย').result).toBe('ไปมหาวิทยาลัย');
+  });
+});
+
+describe('applyRules — คำที่มักเขียนผิด', () => {
+  it('แก้คำที่คนเขียนผิดบ่อย', () => {
+    expect(applyRules('ขออนุญาติสังเกตุผลลัพท์การคำนวนอีกครั้ง').result).toBe(
+      'ขออนุญาตสังเกตผลลัพธ์การคำนวณอีกครั้ง',
+    );
+    expect(applyRules('ปรากฎว่าประสิทธิ์ภาพลดลง').result).toBe(
+      'ปรากฏว่าประสิทธิภาพลดลง',
+    );
+    expect(applyRules('ขอบคุนสำหรับโอกาศครั้งนี้').result).toBe(
+      'ขอบคุณสำหรับโอกาสครั้งนี้',
+    );
+  });
+
+  it('แก้คำทับศัพท์ที่เขียนผิด', () => {
+    expect(
+      applyRules('รบกวนอัพเดทเอกสารแล้วส่งอีเมล์มาที่เว็บไซท์').result,
+    ).toBe('รบกวนอัปเดตเอกสารแล้วส่งอีเมลมาที่เว็บไซต์');
+    expect(applyRules('แอพพลิเคชั่นนี้มีฟังก์ชั่นใหม่').result).toBe(
+      'แอปพลิเคชันนี้มีฟังก์ชันใหม่',
+    );
+    expect(applyRules('ทีมกราฟฟิกทำโปรเจคนี้').result).toBe(
+      'ทีมกราฟิกทำโปรเจกต์นี้',
+    );
+  });
+
+  it('แก้ ซีรีย์ และ ซีรี่ย์ เป็น ซีรีส์', () => {
+    expect(applyRules('ดูซีรีย์ใหม่').result).toBe('ดูซีรีส์ใหม่');
+    expect(applyRules('ดูซีรี่ย์เกาหลี').result).toBe('ดูซีรีส์เกาหลี');
+  });
+
+  it('แก้ เว็ป เป็น เว็บ', () => {
+    expect(applyRules('เข้าเว็ปไซต์ไม่ได้').result).toBe('เข้าเว็บไซต์ไม่ได้');
+  });
+
+  it('ไม่แตะคำที่สะกดถูกอยู่แล้ว และต้องไม่เกิดการันต์ซ้อน', () => {
+    const correct =
+      'ขออนุญาตสังเกตผลลัพธ์การคำนวณ อัปเดตเว็บไซต์ ดูซีรีส์ และส่งอีเมลถึงทีมกราฟิก';
+    const correctWithAppAndProject =
+      'แอปพลิเคชันนี้เสร็จแล้ว โปรเจกต์กำลังดำเนินการ';
+
+    expect(applyRules(correct).result).toBe(correct);
+    expect(applyRules(correct).changed).toBe(false);
+    expect(applyRules(correctWithAppAndProject).result).toBe(
+      correctWithAppAndProject,
+    );
+    expect(applyRules(correctWithAppAndProject).changed).toBe(false);
   });
 });
 
@@ -85,6 +141,73 @@ describe('applyRules — ภาษาพูดเป็นภาษาเขี�
   });
 });
 
+// กลุ่มนี้เกิดจากการรีวิวที่พบว่ากฎซึ่งแตะตัวเลขและอักขระที่ไม่ใช่ไทย
+// ไปทำลายข้อมูลจริงของผู้ใช้ ทุกเคสด้านล่างคือของที่เคยพังจริง
+describe('applyRules — ต้องไม่ทำลายตัวเลขและข้อมูล', () => {
+  it('ไม่กินเลข 5 ที่อยู่กลางจำนวนจริง', () => {
+    expect(applyRules('ปี พ.ศ. 2555 มีการประชุม').result).toBe(
+      'ปี พ.ศ. 2555 มีการประชุม',
+    );
+    expect(applyRules('โทร 025551234 ได้เลย').result).toBe(
+      'โทร 025551234 ได้เลย',
+    );
+    expect(applyRules('เลขที่ 1555/2566').result).toBe('เลขที่ 1555/2566');
+  });
+
+  it('ไม่กินจำนวนที่มีช่องว่างล้อมรอบ เพราะแยกจากเสียงหัวเราะไม่ได้', () => {
+    expect(applyRules('ราคา 5555 บาท').result).toBe('ราคา 5555 บาท');
+  });
+
+  it('ยังตัดเสียงหัวเราะที่ติดกับข้อความไทยได้', () => {
+    expect(applyRules('ตลกมาก5555').result).toBe('ตลกมาก');
+    expect(applyRules('5555ขำจริง').result).toBe('ขำจริง');
+  });
+
+  it('ไม่ยุบเลขไทยที่ซ้ำกัน', () => {
+    expect(applyRules('เลขไทย ๑๑๑ ห้อง').result).toBe('เลขไทย ๑๑๑ ห้อง');
+    expect(applyRules('ดีมากกกกก').result).toBe('ดีมาก');
+  });
+
+  it('ไม่ลบอัศเจรีย์ที่เป็นส่วนหนึ่งของข้อมูล', () => {
+    expect(applyRules('รหัสผ่านคือ Abc!123').result).toBe(
+      'รหัสผ่านคือ Abc!123',
+    );
+    expect(applyRules('ดูหนัง Yahoo! News').result).toBe('ดูหนัง Yahoo! News');
+  });
+
+  it('ยังตัดอัศเจรีย์ที่ตามหลังข้อความไทยได้', () => {
+    expect(applyRules('รีบมาก!!!').result).toBe('รีบมาก');
+  });
+
+  it('ไม่แปลง OK ที่เป็นสถานะทางเทคนิคหรือชื่อตัวแปร', () => {
+    expect(applyRules('สถานะ 200 OK ครับ').result).toBe('สถานะ 200 OK ครับ');
+    expect(applyRules('ตัวแปร OK_STATUS ใช้ได้').result).toBe(
+      'ตัวแปร OK_STATUS ใช้ได้',
+    );
+  });
+
+  it('ยังแปลง OK ที่ผู้ใช้พิมพ์เป็นคำตอบรับได้', () => {
+    expect(applyRules('OK ครับ').result).toBe('ตกลง ครับ');
+    expect(applyRules('โอเคครับ').result).toBe('ตกลงครับ');
+  });
+
+  it('ตัดอีโมจิให้หมดทั้งตัว ไม่เหลือสีผิวหรือ ZWJ ค้าง', () => {
+    expect(applyRules('ส่งงาน 👍🏽 แล้ว').result).toBe('ส่งงาน แล้ว');
+    expect(applyRules('ทีมงาน 👨‍👩‍👧 พร้อม').result).toBe('ทีมงาน พร้อม');
+    expect(applyRules('ขอบคุณมาก 🙏😊').result).toBe('ขอบคุณมาก');
+  });
+
+  it('ผลลัพธ์ต้องไม่มีอักขระล่องหนหลงเหลือ', () => {
+    const withZwj = applyRules('ทีมงาน 👨‍👩‍👧 พร้อม').result;
+    const withSkinTone = applyRules('ส่งงาน 👍🏽 แล้ว').result;
+
+    // เขียนเป็นรหัสยูนิโคด ไม่ใช่ตัวอักษรจริง เพราะสองตัวนี้มองไม่เห็นในโค้ด
+    expect(withZwj).not.toMatch(/‍/u); // ZWJ ตัวเชื่อมอีโมจิ
+    expect(withZwj).not.toMatch(/️/u); // variation selector
+    expect(withSkinTone).not.toMatch(/[\u{1F3FB}-\u{1F3FF}]/u); // สีผิว
+  });
+});
+
 describe('applyRules — ต้องไม่ทำคำอื่นพัง', () => {
   it('ไม่แตะ ประชุม แม้จะมี ปะ อยู่ข้างใน', () => {
     expect(applyRules('ขอเลื่อนประชุม').result).toBe('ขอเลื่อนประชุม');
@@ -100,6 +223,13 @@ describe('applyRules — ต้องไม่ทำคำอื่นพัง'
       'เสื้อคับไปหน่อย ขอเปลี่ยนไซซ์',
     );
     expect(applyRules('กางเกงคับมาก').result).toBe('กางเกงคับมาก');
+  });
+
+  it('ไม่แตะ โปรเจคเตอร์ (เครื่องฉาย) ที่สะกดถูกอยู่แล้ว', () => {
+    expect(applyRules('ใช้โปรเจคเตอร์ฉายสไลด์').result).toBe(
+      'ใช้โปรเจคเตอร์ฉายสไลด์',
+    );
+    expect(applyRules('ใช้โปรเจคเตอร์ฉายสไลด์').changed).toBe(false);
   });
 
   it('ไม่แตะเลข 5 ที่เป็นจำนวนจริง', () => {
@@ -136,7 +266,7 @@ describe('applyRules — ช่องว่างและผลลัพธ์�
   });
 
   it('รายงานสิ่งที่แก้ไขพร้อมเหตุผล', () => {
-    const outcome = applyRules('ว่างมั้ยคับ 5555');
+    const outcome = applyRules('ว่างมั้ยคับ5555');
 
     expect(outcome.result).toBe('ว่างไหมครับ');
     expect(outcome.changed).toBe(true);

@@ -14,6 +14,10 @@ import { buildSystemInstruction, buildUserPrompt } from './prompt';
 /** จำนวนรายการแก้ไขสูงสุดที่ยอมให้ส่งกลับไปหน้าเว็บ */
 const MAX_NOTES = 8;
 
+/** ค่าเริ่มต้นเมื่อไม่ได้ตั้ง env หรือตั้งมาเป็นค่าที่ใช้ไม่ได้ */
+const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_TEMPERATURE = 0.2;
+
 /** โมเดลเริ่มต้น เรียงจากคุณภาพดีที่สุดไปหาโควตาเหลือเยอะที่สุด */
 export const DEFAULT_MODELS = [
   'gemini-flash-latest',
@@ -27,6 +31,28 @@ const SWITCHABLE_CODES = new Set<AditErrorCode>([
   'MODEL_UNAVAILABLE',
   'MODEL_OVERLOADED',
 ]);
+
+/**
+ * อ่านค่าตัวเลขจาก env แบบไม่เชื่อใจ
+ *
+ * ที่ต้องมีฟังก์ชันนี้เพราะ Number('30s') ได้ NaN แล้ว AbortSignal.timeout(NaN)
+ * โยน RangeError ทุก request ซึ่งจะถูกกลบเป็น PROVIDER_ERROR แล้วถอยไปใช้กฎเงียบ ๆ
+ * ผลคือ AI ตายทั้งระบบโดยไม่มีอะไรบอกว่าสาเหตุจริงคือพิมพ์ค่า env ผิด
+ *
+ * @param positiveOnly ค่าที่ต้องมากกว่าศูนย์เท่านั้นถึงจะยอมรับ เช่น timeout
+ */
+export function parseNumberSetting(
+  raw: string | undefined,
+  fallback: number,
+  positiveOnly = false,
+): number {
+  const parsed = Number(raw);
+
+  if (!Number.isFinite(parsed)) return fallback;
+  if (positiveOnly && parsed <= 0) return fallback;
+
+  return parsed;
+}
 
 /**
  * รวมโมเดลหลักกับโมเดลสำรองเป็นลำดับเดียว ตัดตัวซ้ำและช่องว่างทิ้ง
@@ -87,8 +113,32 @@ export class GeminiProvider implements AiProvider {
       config.get<string>('GEMINI_MODEL', ''),
       config.get<string>('GEMINI_FALLBACK_MODELS', ''),
     );
-    this.timeoutMs = Number(config.get<string>('AI_TIMEOUT_MS', '30000'));
-    this.temperature = Number(config.get<string>('AI_TEMPERATURE', '0.2'));
+    this.timeoutMs = parseNumberSetting(
+      config.get<string>('AI_TIMEOUT_MS'),
+      DEFAULT_TIMEOUT_MS,
+      true,
+    );
+    this.temperature = parseNumberSetting(
+      config.get<string>('AI_TEMPERATURE'),
+      DEFAULT_TEMPERATURE,
+    );
+
+    // บอกให้รู้ตัวตั้งแต่ตอนบูต ดีกว่าไปงงตอน request พังทีละอัน
+    this.warnIfIgnored(config, 'AI_TIMEOUT_MS', this.timeoutMs);
+    this.warnIfIgnored(config, 'AI_TEMPERATURE', this.temperature);
+  }
+
+  private warnIfIgnored(
+    config: ConfigService,
+    key: string,
+    used: number,
+  ): void {
+    const raw = config.get<string>(key);
+    if (raw !== undefined && raw.trim() !== '' && Number(raw) !== used) {
+      this.logger.warn(
+        `ค่า ${key}="${raw}" ใช้ไม่ได้ จึงใช้ค่าเริ่มต้น ${used} แทน`,
+      );
+    }
   }
 
   isConfigured(): boolean {
